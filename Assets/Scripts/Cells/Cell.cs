@@ -7,15 +7,14 @@ using UnityEngine;
 public class Cell : MonoBehaviour
 {
 
-    public float linkRestLength;
-    public float springFactor;
-    public float planarFactor;
-    public float bulgeFactor;
+    public float linkRestLength = 1.0f;
+    public float springFactor = 0.1f;
+    public float planarFactor = 0.5f;
+    public float bulgeFactor = 0.4f;
 
-    public float repulsionStrength;
-    public float radiusOfInfluence;
+    public float repulsionStrength = 0.1f;
+    public float radiusOfInfluence = 0.5f;
 
-    private List<Cell> linkedCells;
 
     /// <summary>
     ///  the set of all particles within the radius of influence of the current particle 
@@ -24,22 +23,36 @@ public class Cell : MonoBehaviour
     ///  since they are considered directly attached to each other, 
     ///  and the influences between them are already controlled by the previously described other effects.
     /// </summary>
-    private List<Cell> neighbourCells;
+    private Vector3 displacement;
 
-
-    private Vector3 N = new Vector3();
-
-    void Awake()
+    public Cell()
     {
-        linkedCells = new List<Cell>();
+        displacement = new Vector3();
     }
 
-    void FixedUpdate()
+ 
+    public bool CellSplits()
     {
-        this.transform.position = this.transform.position + ComputeForces() + ComputeCollision();
-    }
+        float flipCoin = Random.Range(0.0f, 1.0f);
+        bool result;
+        if (flipCoin < 0.8) result = false;
+        else result = true;
 
-    private Vector3 ComputeCollision()
+        return result;
+    }
+    public void ApplyDisplacement()
+    {
+        this.transform.position = this.transform.position + displacement;
+    }
+    public Vector3 GetPosition()
+    {
+        return this.transform.position;
+    }
+    public void ComputeDisplacement(List<Cell> linkedCells, Vector3 cellNormal, List<Cell> neighbourCells)
+    {
+        displacement = ComputeForces(linkedCells, cellNormal) + ComputeCollisionForces(neighbourCells);
+    }
+    private Vector3 ComputeCollisionForces(List<Cell> neighbourCells)
     {
         Vector3 collisionOffset = new Vector3();
         var P = this.transform.position;
@@ -65,9 +78,7 @@ public class Cell : MonoBehaviour
         return collisionOffset = repulsionStrength * collisionOffset;
 
     }
-
-
-    private Vector3 ComputeForces()
+    private Vector3 ComputeForces(List<Cell> linkedCells, Vector3 Normal)
     {
         var P = this.transform.position;
 
@@ -83,7 +94,7 @@ public class Cell : MonoBehaviour
             springTargetPartial.Add(L+linkRestLength*(P-L));
             planarTargetPartial.Add(L);
 
-            var dotN = Vector3.Dot((L - P), N);
+            var dotN = Vector3.Dot((L - P), Normal);
             bulgeDistPartial.Add( 
                 Mathf.Sqrt(Mathf.Pow(linkRestLength,2) - Mathf.Pow(L.magnitude,2) + Mathf.Pow(dotN,2))
                 + dotN);
@@ -106,7 +117,7 @@ public class Cell : MonoBehaviour
 
         springTarget = springTarget/linkedCells.Count;
         bulgeDist = bulgeDist / linkedCells.Count;
-        bulgeTarget = P + bulgeDist*N;
+        bulgeTarget = P + bulgeDist*Normal;
 
 
         return  springFactor * (springTarget - P)
