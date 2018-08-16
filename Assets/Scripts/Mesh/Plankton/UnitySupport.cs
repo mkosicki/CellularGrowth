@@ -138,13 +138,13 @@ public static class UnitySupport
         }
 
 
-        var TopologyVertices = MeshTools.ConnetedVerices(source, true);
+        var connetedVertices = MeshTools.ConnetedVerices(TopologyEdges, source, true);
 
         for (int i = 0; i < (pMesh.Halfedges.Count); i += 2)
 
         {
 
-            int[] EndNeighbours = TopologyVertices[pMesh.Halfedges[i + 1].StartVertex].connections.ToArray();
+            int[] EndNeighbours = connetedVertices[pMesh.Halfedges[i + 1].StartVertex].ToArray();
 
             for (int j = 0; j < EndNeighbours.Length; j++)
 
@@ -202,7 +202,7 @@ public static class UnitySupport
 
 
 
-            int[] StartNeighbours = source.TopologyVertices.ConnectedTopologyVertices(pMesh.Halfedges[i].StartVertex, true);
+            int[] StartNeighbours = connetedVertices[pMesh.Halfedges[i].StartVertex].ToArray();
 
             for (int j = 0; j < StartNeighbours.Length; j++)
 
@@ -218,13 +218,13 @@ public static class UnitySupport
 
 
 
-                    int NextPairEdge = source.TopologyEdges.GetEdgeIndex(pMesh.Halfedges[i].StartVertex, EndOfNextOfPairHalfedge);
+                    int NextPairEdge = MeshTools.GetEdgeIndex(TopologyEdges, pMesh.Halfedges[i].StartVertex, EndOfNextOfPairHalfedge);
 
-                    int PrevEdge = source.TopologyEdges.GetEdgeIndex(pMesh.Halfedges[i].StartVertex, StartOfPrevHalfedge);
+                    int PrevEdge = MeshTools.GetEdgeIndex(TopologyEdges, pMesh.Halfedges[i].StartVertex, StartOfPrevHalfedge);
 
 
 
-                    if (source.TopologyEdges.GetTopologyVertices(NextPairEdge).I == pMesh.Halfedges[i].StartVertex)
+                    if (TopologyEdges[NextPairEdge].vertexIndex[0] == pMesh.Halfedges[i].StartVertex)
                     {
 
                         pMesh.Halfedges[i + 1].NextHalfedge = NextPairEdge * 2;
@@ -239,7 +239,7 @@ public static class UnitySupport
 
 
 
-                    if (source.TopologyEdges.GetTopologyVertices(PrevEdge).J == pMesh.Halfedges[i].StartVertex)
+                    if (TopologyEdges[PrevEdge].vertexIndex[1] == pMesh.Halfedges[i].StartVertex)
                     {
 
                         pMesh.Halfedges[i].PrevHalfedge = PrevEdge * 2;
@@ -282,7 +282,7 @@ public static class UnitySupport
 
     /// <remarks>Any faces with five sides or more will be triangulated.</remarks>
 
-    public static Mesh ToRhinoMesh(this PlanktonMesh source)
+    public static Mesh ToUnityMesh(PlanktonMesh source)
 
     {
 

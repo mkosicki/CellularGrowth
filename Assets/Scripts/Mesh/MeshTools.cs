@@ -183,67 +183,75 @@ public static class MeshTools {
         return -1;
     }
 
-
+ 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="mesh"></param>
     /// <returns></returns>
-    public static VertexConnection [] ConnetedVerices(Mesh mesh, bool sort)
+    public static Dictionary<int, List<int> > ConnetedVerices(Edge [] edges, Mesh mesh, bool sort)
     {
-        //TODO Sort
-        //https://answers.unity.com/questions/371115/is-there-an-easy-way-to-find-connected-vertices.html
 
-        Vector3[] vertices = mesh.vertices;
-        VertexConnection[] connections = new VertexConnection[vertices.Length];
+        
+        var connections = new Dictionary<int, List<int> >();
 
-        for (int i = 0; i < vertices.Length; i++)
+        for (int i = 0; i < edges.Length; i++)
         {
-            var P1 = vertices[i];
-            var VC1 = connections[i];
-            for (int n = i + 1; n < vertices.Length; n++)
-            {
-                if (P1 == vertices[n])
-                {
-                    var VC2 = connections[n];
-                    if (VC2 == null)
-                        VC2 = connections[n] = new VertexConnection();
-                    if (VC1 == null)
-                        VC1 = connections[i] = new VertexConnection();
-                    VC1.connections.Add(n);
-                    VC2.connections.Add(i);
-                }
-            }
+            int cPt = edges[i].vertexIndex[0];
+            int ePt = edges[i].vertexIndex[1];
+            UpdteConnections(connections, cPt, ePt);
+            UpdteConnections(connections, ePt, cPt);
         }
 
         if (sort)
         {
-            for (int i = 0; i < vertices.Length; i++)
+
+            foreach (KeyValuePair<int, List<int>> entry in connections)
             {
+                int i = entry.Key;
+                var cList = entry.Value;
+
                 var normal = mesh.normals[i];
                 //https://answers.unity.com/questions/532297/rotate-a-vector-around-a-certain-point.html
                 var vecX = Quaternion.Euler(90, 0, 0) * normal;
                 var vecY = Quaternion.Euler(0, 90, 0) * normal;
 
-                var atan2 = new float [connections[i].connections.Count];
-                var conn = connections[i].connections.ToArray();
+                var atan2 = new float[cList.Count];
+                var conn = cList.ToArray();
 
 
                 for (int j = 0; j < conn.Length; j++)
                 {
-                    var index = connections[i].connections[j];
+                    var index = cList[j];
                     var projectX = Vector3.Dot(vecX, mesh.vertices[index]);
                     var projectY = Vector3.Dot(vecY, mesh.vertices[index]);
                     atan2[j] = Mathf.Atan2(projectY, projectX);
                 }
 
                 Array.Sort(atan2, conn);
-                connections[i].connections = new List<int>(conn);
-            }
+                cList = new List<int>(conn);
 
+
+            }
         }
 
         return connections;
+    }
+
+    private static void UpdteConnections(Dictionary<int, List<int>> connections, int cPt, int ePt)
+    {
+        if (!connections.ContainsKey(cPt))
+        {
+            var c = new List<int>
+                {
+                    ePt
+                };
+            connections.Add(cPt, c);
+        }
+        else
+        {
+            if (connections[cPt].IndexOf(ePt) == -1) connections[cPt].Add(ePt);
+        }
     }
 
     public class VertexConnection
