@@ -19,17 +19,26 @@ public class Organism : MonoBehaviour
 
     private void CreateHalfEdgeMesh()
     {
+        P = UnitySupport.ToPlanktonMesh(InitialMesh);
 
         for (int i = 0; i < InitialMesh.vertexCount; i++)
         {
-            GameObject go = (GameObject)Instantiate(cellPrefab);
-            go.hideFlags = HideFlags.HideInHierarchy;
-            go.transform.parent = transform;
-            go.transform.position = InitialMesh.vertices[i];
+            var pos = InitialMesh.vertices[i];
+            GameObject go = CreateCell(pos);
             cells.Add(go.GetComponent<Cell>());
         }
 
+        Debug.Log("Initial number of cells:" + cells.Count);
         
+    }
+
+    private GameObject CreateCell(Vector3 pos)
+    {
+        GameObject go = (GameObject)Instantiate(cellPrefab);
+        go.hideFlags = HideFlags.HideInHierarchy;
+        go.transform.parent = transform;
+        go.transform.position = pos;
+        return go;
     }
 
     private List<Cell> GetLinkedCells(int cellIndex)
@@ -44,9 +53,9 @@ public class Organism : MonoBehaviour
     }
 
 
-    void FixedUpdate()
+    void Update()
     {
-        //UpdateCells();
+        UpdateCells();
         //SplitCells();
     }
 
@@ -69,6 +78,7 @@ public class Organism : MonoBehaviour
             P.Vertices.SetVertex(i, pos.x, pos.y, pos.z);
         }
     }
+
     private void SplitCells()
     {
         var newCells = new List<Cell>();
@@ -88,9 +98,8 @@ public class Organism : MonoBehaviour
                     int SplitCenter = P.Halfedges[SplitHEdge].StartVertex;
                     var pt = MidPt(P, i);
                     P.Vertices.SetVertex(SplitCenter, pt.x, pt.y, pt.z);
-
-                    //Create a new cell                    
-                    newCells.Add(new Cell());
+                    var newCell = CreateCell(pt);             
+                    newCells.Add(newCell.GetComponent<Cell>());
                 }
             }
         }

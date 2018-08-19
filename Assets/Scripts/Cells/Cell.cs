@@ -7,13 +7,13 @@ using UnityEngine;
 public class Cell : MonoBehaviour
 {
 
-    public float linkRestLength = 1.0f;
+    public float linkRestLength = 1.5f;
     public float springFactor = 0.1f;
-    public float planarFactor = 0.5f;
-    public float bulgeFactor = 0.4f;
+    public float planarFactor = 0.1f;
+    public float bulgeFactor = 0.2f;
 
     public float repulsionStrength = 0.1f;
-    public float radiusOfInfluence = 0.5f;
+    public float radiusOfInfluence = 1f;
 
 
     /// <summary>
@@ -35,14 +35,15 @@ public class Cell : MonoBehaviour
     {
         float flipCoin = Random.Range(0.0f, 1.0f);
         bool result;
-        if (flipCoin < 0.8) result = false;
+        if (flipCoin < 0.99) result = false;
         else result = true;
 
         return result;
     }
     public void ApplyDisplacement()
     {
-        this.transform.position = this.transform.position + displacement;
+        this.transform.position += displacement;
+        displacement = new Vector3();
     }
     public Vector3 GetPosition()
     {
@@ -50,7 +51,8 @@ public class Cell : MonoBehaviour
     }
     public void ComputeDisplacement(List<Cell> linkedCells, Vector3 cellNormal, List<Cell> neighbourCells)
     {
-        displacement = ComputeForces(linkedCells, cellNormal) + ComputeCollisionForces(neighbourCells);
+        displacement = ComputeForces(linkedCells, cellNormal);
+        //+ ComputeCollisionForces(neighbourCells);
     }
     private Vector3 ComputeCollisionForces(List<Cell> neighbourCells)
     {
@@ -59,7 +61,7 @@ public class Cell : MonoBehaviour
 
         var collisionEffectPartial = new List<Vector3>();
 
-        Parallel.ForEach(neighbourCells, (nCell) =>
+        foreach (var nCell in neighbourCells)
         {
             var L = nCell.transform.position;
             var pDiff = P - L;
@@ -68,7 +70,7 @@ public class Cell : MonoBehaviour
             var c = (roi2 - Mathf.Pow(pDiff.magnitude,2))/ roi2;
             var v = c * L;
             collisionEffectPartial.Add(v);
-        });
+        }
 
         for (int i = 0; i < neighbourCells.Count; i++)
         {
@@ -86,19 +88,23 @@ public class Cell : MonoBehaviour
         var planarTargetPartial = new List<Vector3>();
         var bulgeDistPartial = new List<float>();
 
-        Parallel.ForEach(linkedCells, (currentCell) =>
+        foreach (var currentCell in linkedCells)
         {
             var L = currentCell.transform.position;
-            
+            Vector3 PL = P - L;
 
-            springTargetPartial.Add(L+linkRestLength*(P-L));
+            springTargetPartial.Add(L+linkRestLength*(PL.normalized));
             planarTargetPartial.Add(L);
 
-            var dotN = Vector3.Dot((L - P), Normal);
-            bulgeDistPartial.Add( 
-                Mathf.Sqrt(Mathf.Pow(linkRestLength,2) - Mathf.Pow(L.magnitude,2) + Mathf.Pow(dotN,2))
-                + dotN);
-        });
+            Vector3 LP = L - P;
+            float dotN = Vector3.Dot((LP), Normal);
+            float a1 = Mathf.Pow(linkRestLength, 2);
+            float a2 = Mathf.Pow(LP.magnitude, 2);
+            float a3 = Mathf.Pow(dotN, 2);
+            float bDPvalue = Mathf.Sqrt(a1 - a2 + a3) + dotN;
+
+            bulgeDistPartial.Add(bDPvalue);
+        }
 
 
 
@@ -116,13 +122,15 @@ public class Cell : MonoBehaviour
         }
 
         springTarget = springTarget/linkedCells.Count;
+        planarTarget = planarTarget/linkedCells.Count;
         bulgeDist = bulgeDist / linkedCells.Count;
-        bulgeTarget = P + bulgeDist*Normal;
+        bulgeTarget = P + bulgeDist * Normal;
 
-
-        return  springFactor * (springTarget - P)
+        var endValue = springFactor * (springTarget - P)
               + planarFactor * (planarTarget - P)
               + bulgeFactor  * (bulgeTarget - P);
+
+        return endValue;
     }
 
 }
