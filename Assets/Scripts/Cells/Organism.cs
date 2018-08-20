@@ -10,26 +10,41 @@ public class Organism : MonoBehaviour
     private List<Cell> cells = new List<Cell>();
     public GameObject cellPrefab;
     public Mesh InitialMesh;
+    public PointOctree<Cell> pointTree = new PointOctree<Cell>(15, new Vector3(), 2);
+
+    private MeshFilter meshFilter;
 
     // Use this for initialization
     void Start()
     {
         CreateHalfEdgeMesh();
+        this.gameObject.AddComponent<MeshFilter>();
+        meshFilter = this.gameObject.GetComponent<MeshFilter>();
     }
 
     private void CreateHalfEdgeMesh()
     {
+        P = UnitySupport.ToPlanktonMesh(InitialMesh);
 
         for (int i = 0; i < InitialMesh.vertexCount; i++)
         {
-            GameObject go = (GameObject)Instantiate(cellPrefab);
-            go.hideFlags = HideFlags.HideInHierarchy;
-            go.transform.parent = transform;
-            go.transform.position = InitialMesh.vertices[i];
-            cells.Add(go.GetComponent<Cell>());
+            var pos = InitialMesh.vertices[i];
+            GameObject go = CreateCell(pos);
+            var c = go.GetComponent<Cell>();
+            cells.Add(c);
         }
 
-        
+        Debug.Log("Initial number of cells:" + cells.Count);
+
+    }
+
+    private GameObject CreateCell(Vector3 pos)
+    {
+        GameObject go = (GameObject)Instantiate(cellPrefab);
+        go.hideFlags = HideFlags.HideInHierarchy;
+        go.transform.parent = transform;
+        go.transform.position = pos;
+        return go;
     }
 
     private List<Cell> GetLinkedCells(int cellIndex)
@@ -44,20 +59,31 @@ public class Organism : MonoBehaviour
     }
 
 
-    void FixedUpdate()
+    void Update()
     {
-        //UpdateCells();
-        //SplitCells();
+        UpdateCells();
+        SplitCells();
     }
 
     void UpdateCells()
     {
+
+        pointTree = new PointOctree<Cell>(15, new Vector3(), 3);
+
+        for (int i = 0; i < cells.Count; i++)
+        {
+            var c = cells[i];
+            pointTree.Add(c, c.GetPosition());
+        }
+
         for (int i = 0; i < cells.Count; i++)
         {
             var c = cells[i];
             var linkedCells = GetLinkedCells(i);
             var normal = Normal(P, i);
-            c.ComputeDisplacement(linkedCells, normal, new List<Cell>());
+            c.ComputeNeighbourForces(linkedCells, normal);
+            var nearby = new List<Cell>(pointTree.GetNearby(c.GetPosition(), 1));
+            c.ComputeCollisionForces(nearby);
         }
 
         for (int i = 0; i < cells.Count; i++)
@@ -69,6 +95,7 @@ public class Organism : MonoBehaviour
             P.Vertices.SetVertex(i, pos.x, pos.y, pos.z);
         }
     }
+
     private void SplitCells()
     {
         var newCells = new List<Cell>();
@@ -88,10 +115,12 @@ public class Organism : MonoBehaviour
                     int SplitCenter = P.Halfedges[SplitHEdge].StartVertex;
                     var pt = MidPt(P, i);
                     P.Vertices.SetVertex(SplitCenter, pt.x, pt.y, pt.z);
-
-                    //Create a new cell                    
-                    newCells.Add(new Cell());
+                    var newCell = CreateCell(pt);
+                    var c = newCell.GetComponent<Cell>();
+                    newCells.Add(c);
+                    pointTree.Add(c, c.GetPosition());
                 }
+                Debug.Log("Split");
             }
         }
 
@@ -163,4 +192,9 @@ public class Organism : MonoBehaviour
 
     }
 
+    void OnDrawGizmos()
+    {
+        pointTree.DrawAllBounds(); // Draw node boundaries
+        pointTree.DrawAllObjects(); // Mark object positions
+    }
 }

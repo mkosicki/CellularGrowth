@@ -7,14 +7,15 @@ using UnityEngine;
 public class Cell : MonoBehaviour
 {
 
-    public float linkRestLength = 1.0f;
+    public float linkRestLength = 0.5f;
     public float springFactor = 0.1f;
     public float planarFactor = 0.5f;
-    public float bulgeFactor = 0.4f;
+    public float bulgeFactor = 0.3f;
 
-    public float repulsionStrength = 0.1f;
-    public float radiusOfInfluence = 0.5f;
+    public float repulsionStrength = 0.99f;
+    public float radiusOfInfluence = 3f;
 
+    private int numOfDivisions;
 
     /// <summary>
     ///  the set of all particles within the radius of influence of the current particle 
@@ -23,11 +24,14 @@ public class Cell : MonoBehaviour
     ///  since they are considered directly attached to each other, 
     ///  and the influences between them are already controlled by the previously described other effects.
     /// </summary>
-    private Vector3 displacement;
+    private Vector3 displacementF;
+    private Vector3 collisonF;
 
     public Cell()
     {
-        displacement = new Vector3();
+        displacementF = new Vector3();
+        collisonF = new Vector3();
+        numOfDivisions = 0;
     }
 
  
@@ -35,50 +39,54 @@ public class Cell : MonoBehaviour
     {
         float flipCoin = Random.Range(0.0f, 1.0f);
         bool result;
-        if (flipCoin < 0.8) result = false;
-        else result = true;
+        if (flipCoin < 0.99) result = false;
+        else {
+            if (numOfDivisions < 1)
+            {
+                result = true;
+                numOfDivisions++;
+            }
+            else result = false;
+        }
 
         return result;
     }
     public void ApplyDisplacement()
     {
-        this.transform.position = this.transform.position + displacement;
+        var totalDisplacement =  collisonF + displacementF;
+        this.transform.position += totalDisplacement;
     }
     public Vector3 GetPosition()
     {
         return this.transform.position;
     }
-    public void ComputeDisplacement(List<Cell> linkedCells, Vector3 cellNormal, List<Cell> neighbourCells)
-    {
-        displacement = ComputeForces(linkedCells, cellNormal) + ComputeCollisionForces(neighbourCells);
-    }
-    private Vector3 ComputeCollisionForces(List<Cell> neighbourCells)
+
+    public void ComputeCollisionForces(List<Cell> neighbourCells)
     {
         Vector3 collisionOffset = new Vector3();
         var P = this.transform.position;
 
         var collisionEffectPartial = new List<Vector3>();
 
-        Parallel.ForEach(neighbourCells, (nCell) =>
+        foreach (var nCell in neighbourCells)
         {
             var L = nCell.transform.position;
             var pDiff = P - L;
             var roi2 = Mathf.Pow(radiusOfInfluence, 2);
 
             var c = (roi2 - Mathf.Pow(pDiff.magnitude,2))/ roi2;
-            var v = c * L;
+            var v = c * pDiff.normalized;
             collisionEffectPartial.Add(v);
-        });
+        }
 
         for (int i = 0; i < neighbourCells.Count; i++)
         {
             collisionOffset += collisionEffectPartial[i];
         }
 
-        return collisionOffset = repulsionStrength * collisionOffset;
-
+        collisonF = repulsionStrength * collisionOffset;
     }
-    private Vector3 ComputeForces(List<Cell> linkedCells, Vector3 Normal)
+    public void ComputeNeighbourForces(List<Cell> linkedCells, Vector3 Normal)
     {
         var P = this.transform.position;
 
@@ -86,19 +94,24 @@ public class Cell : MonoBehaviour
         var planarTargetPartial = new List<Vector3>();
         var bulgeDistPartial = new List<float>();
 
-        Parallel.ForEach(linkedCells, (currentCell) =>
+        foreach (var currentCell in linkedCells)
         {
             var L = currentCell.transform.position;
-            
+            Vector3 PL = P - L;
 
-            springTargetPartial.Add(L+linkRestLength*(P-L));
+            springTargetPartial.Add(L+linkRestLength*(PL.normalized));
             planarTargetPartial.Add(L);
 
-            var dotN = Vector3.Dot((L - P), Normal);
-            bulgeDistPartial.Add( 
-                Mathf.Sqrt(Mathf.Pow(linkRestLength,2) - Mathf.Pow(L.magnitude,2) + Mathf.Pow(dotN,2))
-                + dotN);
-        });
+            Vector3 LP = L - P;
+            float dotN = Vector3.Dot((LP), Normal);
+            float a1 = Mathf.Pow(linkRestLength, 2);
+            float a2 = Mathf.Pow(LP.magnitude, 2);
+            float a3 = Mathf.Pow(dotN, 2);
+            float sum = a1 - a2 + a3;
+            if (sum < 0) sum = 0;
+            float bDPvalue = Mathf.Sqrt(sum) + dotN;
+            bulgeDistPartial.Add(bDPvalue);
+        }
 
 
 
@@ -116,13 +129,15 @@ public class Cell : MonoBehaviour
         }
 
         springTarget = springTarget/linkedCells.Count;
+        planarTarget = planarTarget/linkedCells.Count;
         bulgeDist = bulgeDist / linkedCells.Count;
-        bulgeTarget = P + bulgeDist*Normal;
+        bulgeTarget = P + bulgeDist * Normal;
 
-
-        return  springFactor * (springTarget - P)
+        var endValue = springFactor * (springTarget - P)
               + planarFactor * (planarTarget - P)
               + bulgeFactor  * (bulgeTarget - P);
+
+        displacementF = endValue;
     }
 
 }
