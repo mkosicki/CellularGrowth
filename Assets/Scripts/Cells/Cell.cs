@@ -7,14 +7,15 @@ using UnityEngine;
 public class Cell : MonoBehaviour
 {
 
-    public float linkRestLength = 1.5f;
+    public float linkRestLength = 0.5f;
     public float springFactor = 0.1f;
-    public float planarFactor = 0.1f;
-    public float bulgeFactor = 0.2f;
+    public float planarFactor = 0.5f;
+    public float bulgeFactor = 0.3f;
 
-    public float repulsionStrength = 0.1f;
-    public float radiusOfInfluence = 1f;
+    public float repulsionStrength = 0.99f;
+    public float radiusOfInfluence = 3f;
 
+    private int numOfDivisions;
 
     /// <summary>
     ///  the set of all particles within the radius of influence of the current particle 
@@ -23,11 +24,14 @@ public class Cell : MonoBehaviour
     ///  since they are considered directly attached to each other, 
     ///  and the influences between them are already controlled by the previously described other effects.
     /// </summary>
-    private Vector3 displacement;
+    private Vector3 displacementF;
+    private Vector3 collisonF;
 
     public Cell()
     {
-        displacement = new Vector3();
+        displacementF = new Vector3();
+        collisonF = new Vector3();
+        numOfDivisions = 0;
     }
 
  
@@ -36,25 +40,28 @@ public class Cell : MonoBehaviour
         float flipCoin = Random.Range(0.0f, 1.0f);
         bool result;
         if (flipCoin < 0.99) result = false;
-        else result = true;
+        else {
+            if (numOfDivisions < 1)
+            {
+                result = true;
+                numOfDivisions++;
+            }
+            else result = false;
+        }
 
         return result;
     }
     public void ApplyDisplacement()
     {
-        this.transform.position += displacement;
-        displacement = new Vector3();
+        var totalDisplacement =  collisonF + displacementF;
+        this.transform.position += totalDisplacement;
     }
     public Vector3 GetPosition()
     {
         return this.transform.position;
     }
-    public void ComputeDisplacement(List<Cell> linkedCells, Vector3 cellNormal, List<Cell> neighbourCells)
-    {
-        displacement = ComputeForces(linkedCells, cellNormal);
-        //+ ComputeCollisionForces(neighbourCells);
-    }
-    private Vector3 ComputeCollisionForces(List<Cell> neighbourCells)
+
+    public void ComputeCollisionForces(List<Cell> neighbourCells)
     {
         Vector3 collisionOffset = new Vector3();
         var P = this.transform.position;
@@ -68,7 +75,7 @@ public class Cell : MonoBehaviour
             var roi2 = Mathf.Pow(radiusOfInfluence, 2);
 
             var c = (roi2 - Mathf.Pow(pDiff.magnitude,2))/ roi2;
-            var v = c * L;
+            var v = c * pDiff.normalized;
             collisionEffectPartial.Add(v);
         }
 
@@ -77,10 +84,9 @@ public class Cell : MonoBehaviour
             collisionOffset += collisionEffectPartial[i];
         }
 
-        return collisionOffset = repulsionStrength * collisionOffset;
-
+        collisonF = repulsionStrength * collisionOffset;
     }
-    private Vector3 ComputeForces(List<Cell> linkedCells, Vector3 Normal)
+    public void ComputeNeighbourForces(List<Cell> linkedCells, Vector3 Normal)
     {
         var P = this.transform.position;
 
@@ -101,8 +107,9 @@ public class Cell : MonoBehaviour
             float a1 = Mathf.Pow(linkRestLength, 2);
             float a2 = Mathf.Pow(LP.magnitude, 2);
             float a3 = Mathf.Pow(dotN, 2);
-            float bDPvalue = Mathf.Sqrt(a1 - a2 + a3) + dotN;
-
+            float sum = a1 - a2 + a3;
+            if (sum < 0) sum = 0;
+            float bDPvalue = Mathf.Sqrt(sum) + dotN;
             bulgeDistPartial.Add(bDPvalue);
         }
 
@@ -130,7 +137,7 @@ public class Cell : MonoBehaviour
               + planarFactor * (planarTarget - P)
               + bulgeFactor  * (bulgeTarget - P);
 
-        return endValue;
+        displacementF = endValue;
     }
 
 }
