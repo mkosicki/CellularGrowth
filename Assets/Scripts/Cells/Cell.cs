@@ -7,10 +7,10 @@ using UnityEngine;
 public class Cell : MonoBehaviour
 {
 
-    public float linkRestLength = 0.5f;
+    public float linkRestLength = 0.75f;
     public float springFactor = 0.1f;
     public float planarFactor = 0.5f;
-    public float bulgeFactor = 0.3f;
+    public float bulgeFactor = 0.5f;
 
     public float repulsionStrength = 0.99f;
     public float radiusOfInfluence = 3f;

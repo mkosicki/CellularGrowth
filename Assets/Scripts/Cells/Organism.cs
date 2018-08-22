@@ -19,11 +19,13 @@ public class Organism : MonoBehaviour
     {
         CreateHalfEdgeMesh();
         this.gameObject.AddComponent<MeshFilter>();
-        meshFilter = this.gameObject.GetComponent<MeshFilter>();
+        //meshFilter = this.gameObject.GetComponent<MeshFilter>();
+        //meshFilter.mesh = UnitySupport.ToUnityMesh(P);
     }
 
     private void CreateHalfEdgeMesh()
     {
+        MeshTools.AutoWeld(InitialMesh, 0.001f);
         P = UnitySupport.ToPlanktonMesh(InitialMesh);
 
         for (int i = 0; i < InitialMesh.vertexCount; i++)

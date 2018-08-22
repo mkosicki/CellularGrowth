@@ -36,7 +36,7 @@ public static class UnitySupport
 
 
 
-        for (int i = 0; i < source.triangles.Length; i++)
+        for (int i = 0; i < source.triangles.Length/3; i++)
 
         {
 
@@ -313,31 +313,31 @@ public static class UnitySupport
 
             }
 
-            else if (fvs.Length == 4)
+            //else if (fvs.Length == 4)
 
-            {
-                faces.AddRange(new int[] { fvs[0], fvs[1], fvs[2], fvs[3] });
-            }
+            //{
+            //    faces.AddRange(new int[] { fvs[0], fvs[1], fvs[2], fvs[3] });
+            //}
 
-            else if (fvs.Length > 4)
+            //else if (fvs.Length > 4)
 
-            {
-                //currently not supporting this kind of meshes
-                //// triangulate about face center (fan)
+            //{
+            //    //currently not supporting this kind of meshes
+            //    //// triangulate about face center (fan)
 
-                //var fc = source.Faces.GetFaceCenter(i);
+            //    //var fc = source.Faces.GetFaceCenter(i);
 
-                //vertices.Add(new Vector3(fc.X, fc.Y, fc.Z);
+            //    //vertices.Add(new Vector3(fc.X, fc.Y, fc.Z);
 
-                //for (int j = 0; j < fvs.Length; j++)
+            //    //for (int j = 0; j < fvs.Length; j++)
 
-                //{
+            //    //{
 
-                //    rMesh.Faces.AddFace(fvs[j], fvs[(j + 1) % fvs.Length], rMesh.Vertices.Count - 1);
+            //    //    rMesh.Faces.AddFace(fvs[j], fvs[(j + 1) % fvs.Length], rMesh.Vertices.Count - 1);
 
-                //}
+            //    //}
 
-            }
+            //}
 
         }
 
